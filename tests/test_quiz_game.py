@@ -29,6 +29,21 @@ class QuizGameInputTest(unittest.TestCase):
 
         self.assertIsNone(result)
 
+    def test_parse_delete_command_accepts_valid_command(self):
+        result = QuizGame.parse_delete_command(" d3 ", 5)
+
+        self.assertEqual(result, 3)
+
+    def test_parse_delete_command_rejects_out_of_range_command(self):
+        result = QuizGame.parse_delete_command("d9", 5)
+
+        self.assertIsNone(result)
+
+    def test_parse_delete_command_rejects_plain_number(self):
+        result = QuizGame.parse_delete_command("3", 5)
+
+        self.assertIsNone(result)
+
 
 if __name__ == "__main__":
     unittest.main()

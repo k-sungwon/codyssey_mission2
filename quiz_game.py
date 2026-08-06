@@ -29,6 +29,22 @@ class QuizGame:
             return None
         return number
 
+    @staticmethod
+    def parse_delete_command(raw_value, quiz_count):
+        value = raw_value.strip().lower()
+        if not value.startswith("d"):
+            return None
+        number_text = value[1:].strip()
+        if not number_text:
+            return None
+        try:
+            number = int(number_text)
+        except ValueError:
+            return None
+        if number < 1 or number > quiz_count:
+            return None
+        return number
+
     def get_number(self, prompt, min_value, max_value):
         while True:
             raw_value = input(prompt)
@@ -81,10 +97,73 @@ class QuizGame:
         print("퀴즈 풀기 기능을 준비 중입니다.")
 
     def show_quiz_list(self):
-        print("퀴즈 목록 기능을 준비 중입니다.")
+        while True:
+            if self.handle_empty_quizzes():
+                return
+
+            print()
+            print(f"등록된 퀴즈 목록 (총 {len(self.quizzes)}개)")
+            print("-" * 40)
+            for index, quiz in enumerate(self.quizzes, start=1):
+                print(f"{index}. {quiz.category} - {quiz.question}")
+            print("-" * 40)
+            print("상세히 볼 퀴즈 번호를 입력하세요.")
+            print("삭제하려면 d번호를 입력하세요. 예: d2")
+            print("home 입력 시 처음으로 돌아갑니다.")
+
+            raw_value = input("입력: ")
+            if raw_value.strip().lower() == HOME:
+                return
+
+            delete_number = self.parse_delete_command(raw_value, len(self.quizzes))
+            if delete_number is not None:
+                self.delete_quiz(delete_number)
+                continue
+
+            detail_number = self.parse_number(raw_value, 1, len(self.quizzes))
+            if detail_number is None:
+                print("잘못된 입력입니다. 번호, d번호, home 중 하나를 입력하세요.")
+                continue
+            self.show_quiz_detail(detail_number)
 
     def add_quiz(self):
-        print("퀴즈 등록 기능을 준비 중입니다.")
+        print()
+        print("새로운 퀴즈를 등록합니다. home 입력 시 처음으로 돌아갑니다.")
+
+        category = self.get_text("주제: ")
+        if category == HOME:
+            return
+        question = self.get_text("문제: ")
+        if question == HOME:
+            return
+
+        choices = []
+        for index in range(1, 5):
+            choice = self.get_text(f"선택지 {index}: ")
+            if choice == HOME:
+                return
+            choices.append(choice)
+
+        answer = self.get_number("정답 번호 (1-4): ", 1, 4)
+        if answer == HOME:
+            return
+
+        hint = self.get_text("힌트: ")
+        if hint == HOME:
+            return
+
+        points = self.get_number("문제 점수 (1-1000): ", 1, 1000)
+        if points == HOME:
+            return
+
+        hint_penalty = self.get_number("힌트 차감 점수 (0-1000): ", 0, 1000)
+        if hint_penalty == HOME:
+            return
+
+        quiz = Quiz(category, question, choices, answer, hint, points, hint_penalty)
+        self.quizzes.append(quiz)
+        self.save()
+        print("퀴즈가 등록되었습니다.")
 
     def show_scores(self):
         print("점수 확인 기능을 준비 중입니다.")
@@ -94,3 +173,57 @@ class QuizGame:
         self.state["best_score"] = self.best_score
         self.state["score_history"] = self.score_history
         save_state(self.state, self.state_path)
+
+    def get_text(self, prompt):
+        while True:
+            value = input(prompt).strip()
+            if value.lower() == HOME:
+                return HOME
+            if value:
+                return value
+            print("빈 입력은 사용할 수 없습니다.")
+
+    def show_quiz_detail(self, quiz_number):
+        quiz = self.quizzes[quiz_number - 1]
+        print()
+        print(f"[{quiz_number}] {quiz.category}")
+        print(quiz.question)
+        for index, choice in enumerate(quiz.choices, start=1):
+            print(f"{index}. {choice}")
+        print(f"정답: {quiz.answer}")
+        print(f"힌트: {quiz.hint}")
+        print(f"점수: {quiz.points}점 / 힌트 차감: {quiz.hint_penalty}점")
+
+    def delete_quiz(self, quiz_number):
+        quiz = self.quizzes[quiz_number - 1]
+        confirm = input(f"'{quiz.question}' 퀴즈를 정말 삭제하시겠습니까? (y/n): ").strip().lower()
+        if confirm != "y":
+            print("삭제를 취소했습니다.")
+            return
+        del self.quizzes[quiz_number - 1]
+        self.save()
+        print("퀴즈가 삭제되었습니다.")
+
+    def handle_empty_quizzes(self):
+        if self.quizzes:
+            return False
+
+        while True:
+            print()
+            print("현재 등록된 퀴즈가 없습니다.")
+            print("1. 퀴즈 등록하러 가기")
+            print("2. 기본 퀴즈로 초기화하기")
+            print("home. 처음으로 돌아가기")
+            choice = self.get_number("선택: ", 1, 2)
+            if choice == HOME:
+                return True
+            if choice == 1:
+                self.add_quiz()
+                return True
+            if choice == 2:
+                from data import get_default_quizzes
+
+                self.quizzes = get_default_quizzes()
+                self.save()
+                print("기본 퀴즈로 초기화했습니다.")
+                return False
