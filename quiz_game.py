@@ -1,3 +1,6 @@
+import random
+from datetime import datetime
+
 from quiz import Quiz
 from storage import DEFAULT_STATE_PATH, load_state, save_state
 
@@ -94,7 +97,72 @@ class QuizGame:
         return self.get_number("선택: ", 1, 5)
 
     def play_quiz(self):
-        print("퀴즈 풀기 기능을 준비 중입니다.")
+        if self.handle_empty_quizzes():
+            return
+
+        print()
+        print(f"현재 등록된 퀴즈는 {len(self.quizzes)}개입니다.")
+        quiz_count = self.get_number(f"몇 문제를 풀까요? (1-{len(self.quizzes)}): ", 1, len(self.quizzes))
+        if quiz_count == HOME:
+            return
+
+        selected_quizzes = random.sample(self.quizzes, quiz_count)
+        score = 0
+        total_possible_score = sum(quiz.points for quiz in selected_quizzes)
+        correct_count = 0
+        used_hint_count = 0
+
+        print()
+        print(f"퀴즈를 시작합니다. 총 {quiz_count}문제입니다.")
+
+        for index, quiz in enumerate(selected_quizzes, start=1):
+            used_hint = False
+            print()
+            print("-" * 40)
+            print(f"[문제 {index}] {quiz.category}")
+            print(quiz.question)
+            for choice_index, choice in enumerate(quiz.choices, start=1):
+                print(f"{choice_index}. {choice}")
+            print(f"h. 힌트 보기 (-{quiz.hint_penalty}점)")
+            print("home. 처음으로 돌아가기")
+
+            while True:
+                raw_answer = input("정답 입력: ").strip().lower()
+                if raw_answer == HOME:
+                    print("풀이를 중단하고 홈으로 돌아갑니다. 점수 기록은 저장하지 않습니다.")
+                    return
+                if raw_answer == "h":
+                    if used_hint:
+                        print("이미 힌트를 사용했습니다.")
+                    else:
+                        used_hint = True
+                        used_hint_count += 1
+                        print(f"힌트: {quiz.hint} (-{quiz.hint_penalty}점)")
+                    continue
+
+                answer = self.parse_number(raw_answer, 1, 4)
+                if answer is None:
+                    print("잘못된 입력입니다. 1-4 사이 숫자, h, home 중 하나를 입력하세요.")
+                    continue
+
+                correct = quiz.is_correct(answer)
+                earned = self.calculate_question_score(quiz, used_hint, correct)
+                score += earned
+                if correct:
+                    correct_count += 1
+                    print(f"정답입니다! +{earned}점")
+                else:
+                    print(f"오답입니다. 정답은 {quiz.answer}번입니다.")
+                break
+
+        self.record_score(score, total_possible_score, quiz_count, correct_count, used_hint_count)
+        print()
+        print("=" * 40)
+        print(f"결과: {quiz_count}문제 중 {correct_count}문제 정답")
+        print(f"점수: {score}/{total_possible_score}점")
+        print(f"힌트 사용: {used_hint_count}회")
+        print(f"최고 점수: {self.best_score}점")
+        print("=" * 40)
 
     def show_quiz_list(self):
         while True:
@@ -166,7 +234,22 @@ class QuizGame:
         print("퀴즈가 등록되었습니다.")
 
     def show_scores(self):
-        print("점수 확인 기능을 준비 중입니다.")
+        print()
+        print("점수 기록")
+        print("-" * 40)
+        if not self.score_history:
+            print("아직 완료한 퀴즈 기록이 없습니다.")
+            return
+
+        print(f"최고 점수: {self.best_score}점")
+        for index, record in enumerate(self.score_history, start=1):
+            print()
+            print(f"[{index}] {record['played_at']}")
+            print(f"닉네임: {record['nickname']}")
+            print(f"점수: {record['score']}/{record['total_possible_score']}점")
+            print(f"푼 문제 수: {record['quiz_count']}개")
+            print(f"정답 수: {record['correct_count']}개")
+            print(f"힌트 사용 수: {record['used_hint_count']}회")
 
     def save(self):
         self.state["quizzes"] = [quiz.to_dict() for quiz in self.quizzes]
@@ -227,3 +310,26 @@ class QuizGame:
                 self.save()
                 print("기본 퀴즈로 초기화했습니다.")
                 return False
+
+    @staticmethod
+    def calculate_question_score(quiz, used_hint, correct):
+        if not correct:
+            return 0
+        if used_hint:
+            return max(0, quiz.points - quiz.hint_penalty)
+        return quiz.points
+
+    def record_score(self, score, total_possible_score, quiz_count, correct_count, used_hint_count):
+        record = {
+            "nickname": self.nickname,
+            "played_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "score": score,
+            "total_possible_score": total_possible_score,
+            "quiz_count": quiz_count,
+            "correct_count": correct_count,
+            "used_hint_count": used_hint_count,
+        }
+        self.score_history.append(record)
+        if score > self.best_score:
+            self.best_score = score
+        self.save()
