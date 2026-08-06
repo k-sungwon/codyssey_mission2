@@ -1,6 +1,7 @@
 import unittest
 
 from quiz import Quiz
+from data import get_default_quizzes
 
 
 class QuizTest(unittest.TestCase):
@@ -26,6 +27,13 @@ class QuizTest(unittest.TestCase):
     def test_quiz_answer_must_be_between_one_and_four(self):
         with self.assertRaises(ValueError):
             Quiz("Python 기초", "문제", ["1", "2", "3", "4"], 5, "힌트")
+
+    def test_default_quizzes_have_five_topics(self):
+        quizzes = get_default_quizzes()
+        categories = {quiz.category for quiz in quizzes}
+
+        self.assertEqual(len(quizzes), 5)
+        self.assertEqual(categories, {"Python 기초", "스포츠 상식", "음악 상식", "영화 상식", "경제 상식"})
 
 
 if __name__ == "__main__":
