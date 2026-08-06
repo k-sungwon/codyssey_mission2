@@ -1,4 +1,5 @@
 import json
+import tempfile
 import unittest
 
 from storage import load_state, save_state
@@ -40,6 +41,14 @@ class StorageTest(unittest.TestCase):
 
         self.assertEqual(len(state["quizzes"]), 5)
         self.assertEqual(state["best_score"], 0)
+
+    def test_save_state_returns_false_when_path_is_not_writable_file(self):
+        directory_path = tempfile.mkdtemp(prefix="quiz-game-directory-")
+        state = {"quizzes": [], "best_score": 0, "score_history": []}
+
+        result = save_state(state, directory_path)
+
+        self.assertFalse(result)
 
     def tmp_path(self, filename):
         import tempfile

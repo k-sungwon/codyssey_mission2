@@ -30,8 +30,13 @@ def load_state(path=DEFAULT_STATE_PATH):
 
 
 def save_state(state, path=DEFAULT_STATE_PATH):
-    with open(path, "w", encoding="utf-8") as file:
-        json.dump(normalize_state(state), file, ensure_ascii=False, indent=2)
+    try:
+        with open(path, "w", encoding="utf-8") as file:
+            json.dump(normalize_state(state), file, ensure_ascii=False, indent=2)
+        return True
+    except OSError:
+        print("저장 파일을 쓰는 중 문제가 발생했습니다. 현재 실행 결과가 저장되지 않을 수 있습니다.")
+        return False
 
 
 def normalize_state(state):
