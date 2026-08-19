@@ -20,9 +20,25 @@ Python 콘솔에서 실행되는 퀴즈 게임입니다. 사용자는 닉네임�
 
 하나의 주제만 사용하지 않고 여러 분야를 섞은 이유는 퀴즈 게임이 특정 분야에 고정되지 않고 다양한 주제를 저장하고 관리할 수 있다는 점을 보여주기 위해서입니다.
 
+## 실행 환경
+
+Python 3.10 이상이 필요합니다. 실행 전 아래 명령으로 버전을 확인합니다.
+
+```bash
+python3 --version
+```
+
+출력 예시:
+
+```text
+Python 3.10.x
+```
+
+Python 3.9 이하가 출력되면 Python 3.10 이상을 설치한 뒤 실행해야 합니다. `.python-version` 파일에는 이 프로젝트의 기준 버전인 `3.10`을 명시했습니다.
+
 ## 실행 방법
 
-Python 3.10 이상 사용을 권장합니다.
+아래 명령으로 프로그램을 실행합니다.
 
 ```bash
 python3 main.py
@@ -78,6 +94,7 @@ secondMisson/
 ├── README.md
 ├── LICENSE
 ├── .gitignore
+├── .python-version
 ├── tests/
 │   ├── test_quiz.py
 │   ├── test_quiz_game.py
