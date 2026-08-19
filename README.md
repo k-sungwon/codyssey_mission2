@@ -36,6 +36,35 @@ Python 3.10.x
 
 Python 3.9 이하가 출력되면 Python 3.10 이상을 설치한 뒤 실행해야 합니다. `.python-version` 파일에는 이 프로젝트의 기준 버전인 `3.10`을 명시했습니다.
 
+교육장 PC처럼 기본 Python 버전이 3.9이고 설치 권한이 없는 경우에는 Docker로 Python 3.10 환경을 사용할 수 있습니다.
+
+### Docker로 Python 3.10 버전 확인
+
+```bash
+docker run --rm -it -v "$PWD":/app -w /app python:3.10 python --version
+```
+
+### Docker로 퀴즈 게임 실행
+
+```bash
+docker run --rm -it -v "$PWD":/app -w /app python:3.10 python main.py
+```
+
+### Docker로 자동 테스트 실행
+
+```bash
+docker run --rm -v "$PWD":/app -w /app python:3.10 python -m unittest discover -s tests -v
+```
+
+Docker 명령어 공통 옵션:
+
+- `docker run`: Docker 컨테이너를 실행합니다.
+- `--rm`: 실행이 끝난 컨테이너를 자동으로 삭제합니다.
+- `-it`: 사용자가 직접 입력할 수 있게 합니다. 퀴즈 게임 실행처럼 입력이 필요한 경우 사용합니다.
+- `-v "$PWD":/app`: 현재 프로젝트 폴더를 컨테이너 안의 `/app` 폴더로 연결합니다.
+- `-w /app`: 컨테이너 안에서 `/app` 폴더를 작업 위치로 사용합니다.
+- `python:3.10`: Python 3.10이 설치된 Docker 이미지를 사용합니다.
+
 ## 실행 방법
 
 아래 명령으로 프로그램을 실행합니다.
@@ -100,6 +129,8 @@ secondMisson/
 │   ├── test_quiz_game.py
 │   └── test_storage.py
 └── docs/
+    ├── code-flow.md
+    ├── screenshots/
     └── superpowers/
         ├── specs/
         └── plans/
@@ -173,6 +204,24 @@ secondMisson/
 
 ```bash
 python3 -m unittest discover -s tests -v
+```
+
+## 코드 흐름 문서
+
+코드 구조와 함수 실행 흐름은 [`docs/code-flow.md`](docs/code-flow.md)에서 확인할 수 있습니다.
+
+## 스크린샷 폴더
+
+제출용 실행 화면 스크린샷은 `docs/screenshots/` 폴더에 저장하면 됩니다.
+
+예시 파일명:
+
+```text
+docs/screenshots/menu.png
+docs/screenshots/play.png
+docs/screenshots/add_quiz.png
+docs/screenshots/score.png
+docs/screenshots/git_log.png
 ```
 
 ## 퀴즈 목록 명령
