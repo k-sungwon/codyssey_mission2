@@ -37,20 +37,57 @@ class QuizGame:
         value = raw_value.strip().lower()
         if not value.startswith("d"):
             return None
-        number_text = value[1:].strip()
-        if not number_text:
+        number_texts = value[1:].strip().split()
+        if not number_texts:
             return None
-        try:
-            number = int(number_text)
-        except ValueError:
-            return None
-        if number < 1 or number > quiz_count:
-            return None
-        return number
+        numbers = []
+        seen = set()
+        for number_text in number_texts:
+            try:
+                number = int(number_text)
+            except ValueError:
+                return None
+            if number < 1 or number > quiz_count or number in seen:
+                return None
+            numbers.append(number)
+            seen.add(number)
+        return numbers
+
+    @staticmethod
+    def parse_detail_action(raw_value):
+        value = raw_value.strip().lower()
+        if value == HOME:
+            return HOME
+        if value == "1":
+            return "play"
+        if value == "2":
+            return "detail"
+        return None
+
+    @staticmethod
+    def get_sorted_score_history(score_history):
+        return sorted(score_history, key=lambda record: (record["score"], record["played_at"]), reverse=True)
+
+    @staticmethod
+    def ask_value(prompt):
+        label = prompt.strip()
+        if label.endswith(":"):
+            label = label[:-1]
+        print(label)
+        return input("> ")
+
+    @staticmethod
+    def confirm(prompt):
+        print(prompt)
+        return input("> ").strip().lower()
+
+    @staticmethod
+    def parse_reset_command(raw_value):
+        return raw_value.strip().lower() == "reset"
 
     def get_number(self, prompt, min_value, max_value):
         while True:
-            raw_value = input(prompt)
+            raw_value = self.ask_value(prompt)
             result = self.parse_number(raw_value, min_value, max_value)
             if result is not None:
                 return result
@@ -106,11 +143,14 @@ class QuizGame:
         if quiz_count == HOME:
             return
 
-        selected_quizzes = random.sample(self.quizzes, quiz_count)
+        self.play_selected_quizzes(random.sample(self.quizzes, quiz_count))
+
+    def play_selected_quizzes(self, selected_quizzes):
         score = 0
         total_possible_score = sum(quiz.points for quiz in selected_quizzes)
         correct_count = 0
         used_hint_count = 0
+        quiz_count = len(selected_quizzes)
 
         print()
         print(f"퀴즈를 시작합니다. 총 {quiz_count}문제입니다.")
@@ -127,10 +167,10 @@ class QuizGame:
             print("home. 처음으로 돌아가기")
 
             while True:
-                raw_answer = input("정답 입력: ").strip().lower()
+                raw_answer = self.ask_value("정답 입력: ").strip().lower()
                 if raw_answer == HOME:
                     print("풀이를 중단하고 홈으로 돌아갑니다. 점수 기록은 저장하지 않습니다.")
-                    return
+                    return HOME
                 if raw_answer == "h":
                     if used_hint:
                         print("이미 힌트를 사용했습니다.")
@@ -176,23 +216,28 @@ class QuizGame:
                 print(f"{index}. {quiz.category} - {quiz.question}")
             print("-" * 40)
             print("상세히 볼 퀴즈 번호를 입력하세요.")
-            print("삭제하려면 d번호를 입력하세요. 예: d2")
+            print("삭제하려면 d번호를 입력하세요. 예: d2 또는 d2 4 5")
+            print("reset 입력 시 기본 퀴즈로 초기화합니다.")
             print("home 입력 시 처음으로 돌아갑니다.")
 
-            raw_value = input("입력: ")
+            raw_value = self.ask_value("입력: ")
             if raw_value.strip().lower() == HOME:
                 return
+            if self.parse_reset_command(raw_value):
+                self.reset_default_quizzes()
+                continue
 
-            delete_number = self.parse_delete_command(raw_value, len(self.quizzes))
-            if delete_number is not None:
-                self.delete_quiz(delete_number)
+            delete_numbers = self.parse_delete_command(raw_value, len(self.quizzes))
+            if delete_numbers is not None:
+                self.delete_quizzes(delete_numbers)
                 continue
 
             detail_number = self.parse_number(raw_value, 1, len(self.quizzes))
             if detail_number is None:
-                print("잘못된 입력입니다. 번호, d번호, home 중 하나를 입력하세요.")
+                print("잘못된 입력입니다. 번호, d번호, reset, home 중 하나를 입력하세요.")
                 continue
-            self.show_quiz_detail(detail_number)
+            if self.show_quiz_actions(detail_number) == HOME:
+                return
 
     def add_quiz(self):
         print()
@@ -242,7 +287,7 @@ class QuizGame:
             return
 
         print(f"최고 점수: {self.best_score}점")
-        for index, record in enumerate(self.score_history, start=1):
+        for index, record in enumerate(self.get_sorted_score_history(self.score_history), start=1):
             print()
             print(f"[{index}] {record['played_at']}")
             print(f"닉네임: {record['nickname']}")
@@ -259,7 +304,7 @@ class QuizGame:
 
     def get_text(self, prompt):
         while True:
-            value = input(prompt).strip()
+            value = self.ask_value(prompt).strip()
             if value.lower() == HOME:
                 return HOME
             if value:
@@ -278,14 +323,64 @@ class QuizGame:
         print(f"점수: {quiz.points}점 / 힌트 차감: {quiz.hint_penalty}점")
 
     def delete_quiz(self, quiz_number):
+        self.delete_quizzes([quiz_number])
+
+    def delete_quizzes(self, quiz_numbers):
+        if len(quiz_numbers) == 1:
+            self.delete_single_quiz(quiz_numbers[0])
+            return
+
+        selected_quizzes = [self.quizzes[number - 1] for number in quiz_numbers]
+        topics = ", ".join(quiz.category for quiz in selected_quizzes)
+        confirm = self.confirm(f"{len(quiz_numbers)}개 퀴즈를 삭제합니다. 주제: {topics}. 정말 삭제하시겠습니까? (y/n):")
+        if confirm != "y":
+            print("삭제를 취소했습니다.")
+            return
+
+        for quiz_number in sorted(quiz_numbers, reverse=True):
+            del self.quizzes[quiz_number - 1]
+        self.save()
+        print(f"{len(quiz_numbers)}개 퀴즈가 삭제되었습니다.")
+
+    def delete_single_quiz(self, quiz_number):
         quiz = self.quizzes[quiz_number - 1]
-        confirm = input(f"'{quiz.question}' 퀴즈를 정말 삭제하시겠습니까? (y/n): ").strip().lower()
+        confirm = self.confirm(f"'{quiz.question}' 퀴즈를 정말 삭제하시겠습니까? (y/n):")
         if confirm != "y":
             print("삭제를 취소했습니다.")
             return
         del self.quizzes[quiz_number - 1]
         self.save()
         print("퀴즈가 삭제되었습니다.")
+
+    def show_quiz_actions(self, quiz_number):
+        while True:
+            quiz = self.quizzes[quiz_number - 1]
+            print()
+            print(f"[{quiz_number}] {quiz.category} - {quiz.question}")
+            print("1. 문제 풀기")
+            print("2. 상세 보기")
+            print("home. 처음으로 돌아가기")
+            action = self.parse_detail_action(self.ask_value("선택: "))
+            if action == HOME:
+                return HOME
+            if action == "play":
+                return self.play_selected_quizzes([quiz])
+            if action == "detail":
+                self.show_quiz_detail(quiz_number)
+                return
+            print("잘못된 입력입니다. 1, 2, home 중 하나를 입력하세요.")
+
+    def reset_default_quizzes(self):
+        from data import get_default_quizzes
+
+        confirm = self.confirm("현재 퀴즈 목록을 기본 퀴즈 5개로 초기화할까요? (y/n):")
+        if confirm != "y":
+            print("초기화를 취소했습니다.")
+            return False
+        self.quizzes = get_default_quizzes()
+        self.save()
+        print("기본 퀴즈로 초기화했습니다.")
+        return True
 
     def handle_empty_quizzes(self):
         if self.quizzes:
@@ -304,12 +399,7 @@ class QuizGame:
                 self.add_quiz()
                 return True
             if choice == 2:
-                from data import get_default_quizzes
-
-                self.quizzes = get_default_quizzes()
-                self.save()
-                print("기본 퀴즈로 초기화했습니다.")
-                return False
+                return not self.reset_default_quizzes()
 
     @staticmethod
     def calculate_question_score(quiz, used_hint, correct):

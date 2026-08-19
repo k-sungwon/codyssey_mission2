@@ -4,7 +4,8 @@ from quiz_game import QuizGame
 def ask_nickname():
     while True:
         try:
-            nickname = input("닉네임을 입력하세요: ").strip()
+            print("닉네임을 입력하세요")
+            nickname = input("> ").strip()
             if nickname:
                 return nickname
             print("닉네임은 비워둘 수 없습니다.")
