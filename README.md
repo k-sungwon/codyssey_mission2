@@ -28,16 +28,6 @@ Python 3.10 이상이 필요합니다. 실행 전 아래 명령으로 버전을 
 python3 --version
 ```
 
-출력 예시:
-
-```text
-Python 3.10.x
-```
-
-Python 3.9 이하가 출력되면 Python 3.10 이상을 설치한 뒤 실행해야 합니다. `.python-version` 파일에는 이 프로젝트의 기준 버전인 `3.10`을 명시했습니다.
-
-교육장 PC처럼 기본 Python 버전이 3.9이고 설치 권한이 없는 경우에는 Docker로 Python 3.10 환경을 사용할 수 있습니다.
-
 ### Docker로 Python 3.10 버전 확인
 
 ```bash
@@ -47,7 +37,20 @@ docker run --rm -it -v "$PWD":/app -w /app python:3.10 python --version
 ### Docker로 퀴즈 게임 실행
 
 ```bash
-docker run --rm -it -v "$PWD":/app -w /app python:3.10 python main.py
+docker run -dit --name codyssey-m2 -v "$PWD":/app -w /app python:3.10 bash
+
+docker exec -it codyssey-m2 bash //도커 재접속
+
+//도커 내부 bash에서
+python --version // 버전확인
+python main.py // 실행
+python -m unittest discover -s tests -v //코드 테스트
+
+//컨테이너 중지/삭제/시작
+docker stop codyssey-m2
+docker rm codyssey-m2
+docker start codyssey-m2
+
 ```
 
 ### Docker로 자동 테스트 실행
